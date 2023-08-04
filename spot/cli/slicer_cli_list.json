@@ -1,5 +1,5 @@
 {
-    "SpotSegmentation": {
+    "SpotAnnotation": {
       "type"    : "python"
     }  
 }

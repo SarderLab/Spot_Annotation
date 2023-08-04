@@ -218,11 +218,7 @@ class SpotAnnotation:
 
     def save(self):
 
-        os.makedirs(self.args.basedir + '/tmp/')
-        f = open(self.args.basedir + '/tmp/spotanot.json', 'w')
-        f.close()
-        self.spot_annotations.json_save(self.args.basedir + '/tmp/spotanot.json')
-        annot = json.load(open(self.args.basedir + '/tmp/spotanot.json'))
+        annot = wak.Histomics(self.spot_annotations)
         folder = self.args.basedir
         girder_folder_id = folder.split('/')[-2]
         _ = os.system("printf 'Using data from girder_client Folder: {}\n'".format(folder))
@@ -236,8 +232,7 @@ class SpotAnnotation:
             item_dict.update(d)
         print(item_dict)
         print(item_dict[file_name])
-        #_ = gc.post(path='annotation', parameters={'itemId': item_dict[file_name]}, data=json.dumps(annot))
-        _ = gc.post(f'annotation/item/{item_dict[file_name]}', data=json.dumps(annot), headers={'X-HTTP-Method': 'POST','Content-Type':'application/json'})
+        _ = gc.post(f'annotation/item/{item_dict[file_name]}', data=json.dumps(annot.json), headers={'X-HTTP-Method': 'POST','Content-Type':'application/json'})
         print('uploating layers')
         print('annotation uploaded...\n')
 

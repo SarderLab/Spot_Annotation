@@ -182,7 +182,7 @@ WORKDIR $spot_path/spot/cli
 # Test our entrypoint.  If we have incompatible versions of numpy and
 # openslide, one of these will fail
 RUN python -m slicer_cli_web.cli_list_entrypoint --list_cli
-RUN python -m slicer_cli_web.cli_list_entrypoint SpotSegmentation --help
+RUN python -m slicer_cli_web.cli_list_entrypoint SpotAnnotation --help
 
 
 ENTRYPOINT ["/bin/bash", "docker-entrypoint.sh"]
