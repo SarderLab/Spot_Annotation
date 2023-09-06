@@ -93,6 +93,7 @@ setup(
         'ctk-cli',
         'Shapely==1.8.5.post1',
         'wsi-annotations-kit==1.2.11',
+        'rpy2'
     ],
     license='Apache Software License 2.0',
     keywords='spot',

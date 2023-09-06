@@ -27,8 +27,10 @@ import girder_client
 from shapely.geometry import Polygon, Point
 #from geojson import Feature, dump
 from wsi_annotations_kit import wsi_annotations_kit as wak
-
+import rpy2.robjects as robjects
 from tqdm import tqdm
+import os
+import shutil
 
 
 class SpotAnnotation:
@@ -237,19 +239,66 @@ class SpotAnnotation:
         print('annotation uploaded...\n')
 
 
-def main(args):
+def main(spot_coord_file,cell_fract_file,args):
 
-    SpotAnnotation(args.coordinates_file, args.omics_file, args.definitions_file, args)
+    SpotAnnotation(spot_coord_file, cell_fract_file, args.definitions_file, args)
   
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--basedir')
-    parser.add_argument('--coordinates_file')
-    parser.add_argument('--omics_file')
+    #parser.add_argument('--coordinates_file')
+    #parser.add_argument('--omics_file')
+    parser.add_argument('--rds_file')
     parser.add_argument('--definitions_file')
     parser.add_argument('--girderApiUrl')
     parser.add_argument('--girderToken')
     parser.add_argument('--input_files')
     args = parser.parse_args()
-    main(args=args)
+    # Extracting important data from Visium RDS Files and saving per-spot information
+    out_dir = args.basedir + '/tmp'
+    os.makedirs(out_dir, exist_ok=True)
+    #robjects.r(f'install.packages("Seurat",lib="{out_dir}",repos ="https://cran.r-project.org")')
+    robjects.r(f'library(Seurat)')
+    #robjects.r(f'library(Seurat,lib.loc="{out_dir}")')
+    robjects.r('library(stringr)')
+
+    robjects.r(f'reads_rds_file <- readRDS("{args.rds_file}")')
+
+    # This part has varied across versions of outputs from Ricardo
+    robjects.r(f'cell_type_fract <- GetAssayData(reads_rds_file@assays[["pred_subclass_l2"]])')
+
+    # Normalizing so that columns sum to 1
+    robjects.r('cell_type_fract <- cell_type_fract[1:nrow(cell_type_fract)-1,]')
+    robjects.r('cell_type_norm <- cell_type_fract/colSums(cell_type_fract)')
+    robjects.r('cell_type_norm[is.na(cell_type_norm)] = 0')
+
+    # Getting spot barcodes and coordinates
+    robjects.r('spot_coords <- reads_rds_file@images[["slice1"]]@coordinates')
+
+    # If a outputs folder is specified
+
+        # Getting the file name from input file path
+    image_name = args.input_files.split('/')[-1] 
+
+    #robjects.r(f'file_name <- "{image_name}"')
+        # Specifying and creating output directory within input file directory
+    robjects.r(f'output_dir <- "{out_dir}"')
+    #robjects.r('dir.create(output_dir)')
+
+        # Writing output files to default output folder
+    image_name = image_name.split('.')[0]
+    spot_coord_file =  out_dir + '/' + image_name + '_spot_coords.csv'  
+    cell_fract_file =out_dir + '/'+ image_name + '_cell_fract.csv'
+    # f1= open(spot_coord_file,'w')
+    # f1.close()
+    # f2=open(cell_fract_file,'w')
+    # f2.close() 
+    print(spot_coord_file)
+    print(cell_fract_file)
+    robjects.r(f'write.csv(cell_type_norm,file="{cell_fract_file}",sep="")')
+    robjects.r(f'write.csv(spot_coords,file="{spot_coord_file}",sep="")')
+
+    main(spot_coord_file,cell_fract_file,args=args)
+    shutil.rmtree(out_dir)
+    print("Done")

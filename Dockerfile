@@ -8,7 +8,8 @@
 # start from nvidia/cuda 10.0
 # FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
 #FROM nvidia/cuda:10.2-base-ubuntu18.04
-FROM nvidia/cuda:11.1.1-base-ubuntu18.04
+#FROM nvidia/cuda:11.1.1-base-ubuntu18.04
+FROM rocker/r-ubuntu:20.04
 # LABEL com.nvidia.volumes.needed="nvidia_driver"
 #FROM tensorflow/tensorflow:1.15.4-gpu-py3
 LABEL com.nvidia.volumes.needed="nvidia_driver"
@@ -22,8 +23,8 @@ ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
 # Remove bad repos
-RUN rm \
-    /etc/apt/sources.list.d/cuda.list
+# RUN rm \
+#     /etc/apt/sources.list.d/cuda.list
 
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends software-properties-common && \
@@ -38,15 +39,15 @@ RUN apt-get update && \
     #keyboard-configuration \
     git \
     wget \
-    python-qt4 \
-    python3-pyqt4 \
+    #python-qt4 \
+    #python3-pyqt4 \
     curl \
     ca-certificates \
     libcurl4-openssl-dev \
     libexpat1-dev \
     unzip \
     libhdf5-dev \
-    libpython-dev \
+    #libpython-dev \
     libpython3-dev \
     python2.7-dev \
     python-tk \
@@ -96,7 +97,22 @@ RUN rm -f /usr/bin/python && \
     curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
     python get-pip.py && \
     rm get-pip.py && \
-    ln `which pip3` /usr/bin/pip
+    ln `which pip3` /usr/bin/pip 
+
+# RUN wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc |  gpg --dearmor -o /usr/share/keyrings/r-project.gpg && \
+#     echo "deb [signed-by=/usr/share/keyrings/r-project.gpg] https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" | tee -a /etc/apt/sources.list.d/r-project.list && \
+#     apt update && \
+#     apt install -y r-base-dev r-recommended r-base-core r-base
+# RUN apt update && \
+#     apt install software-properties-common dirmngr && \
+#     wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc |  tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc && \
+#     add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/" && \
+#     apt update && \
+#     apt install  -y  r-base 
+# RUN apt install -y software-properties-common libblas3 liblapack3 libtcl8.6 libtk8.6 && \
+#     add-apt-repository -y --enable-source --yes "ppa:marutter/rrutter4.0" && \
+#     add-apt-repository -y --enable-source --yes "ppa:c2d4u.team/c2d4u4.0+" && \
+#     apt install -y r-base
 
 
 RUN which  python && \
@@ -105,7 +121,8 @@ RUN which  python && \
 # RUN curl -O https://bootstrap.pypa.io/pip/3.7/get-pip.py && \
 #     python get-pip.py && \
 #     rm get-pip.py
-
+RUN R -e 'install.packages("Seurat",repos ="https://cran.r-project.org")'
+RUN R -e 'library(Seurat)'
 ENV build_path=$PWD/build
 ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 # IFTASegmentation sepcific
