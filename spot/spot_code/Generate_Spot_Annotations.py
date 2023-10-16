@@ -35,22 +35,21 @@ import shutil
 
 class SpotAnnotation:
     def __init__(self,
-                 coordinates_file: str,
-                 omics_file: str,
+                 rds_file,
                  definitions_file: str,
-                 args):
+                 image_id,
+                 gc):
         
-        self.coordinates_file = coordinates_file
-        self.omics_file = omics_file
+        self.rds_file = rds_file
         self.definitions_file = definitions_file
-        # self.output_type = output_type
-        # self.output_file = output_file
-        self.args = args
+
+        self.image_id = image_id
+        self.gc = gc
 
         # Reading in csv files from paths
-        self.coordinates = pd.read_csv(self.coordinates_file, index_col=0, header=0)
-        self.omics = pd.read_csv(self.omics_file, index_col=0, header=0)
         self.definitions = pd.read_csv(self.definitions_file)
+
+        self.process_rds()
 
         # Determining MPP from coordinates
         self.mpp = self.calculate_mpp()
@@ -92,6 +91,46 @@ class SpotAnnotation:
     def distance(self, point1, point2):
         # Distance between 2 points
         return (((point1[0]-point2[0])**2)+((point1[1]-point2[1])**2))**0.5
+
+    def process_rds(self):
+
+        # Processing RDS file containing spot coordinates and omics data
+        robjects.r('library(Seurat)')
+        robjects.r('library(stringr)')
+
+        robjects.r('''
+                    # Function to extract normalized cell type fractions from RDS file
+                    get_cell_norms <- function(rds_file){
+                        read_rds_file <- readRDS(rds_file)
+
+                        if ("predsubclassl2" %in% names(read_rds_file@assays)){
+                            cell_type_fract <- GetAssayData(read_rds_file@assays[["predsubclassl2"]])
+                        } else if ("pred_subclass_l2" %in% names(read_rds_file@assays)){
+                            cell_type_fract <- GetAssayData(read_rds_file@assays[["pred_subclass_l2"]])
+                        }
+
+                        # Normalizing so that the columns sum to 1
+                        cell_type_fract <- cell_type_fract[1:nrow(cell_type_fract)-1,]
+                        cell_type_norm <- sweep(cell_type_fract,2,colSums(cell_type_fract),'/')
+                        cell_type_norm[is.na(cell_type_norm)] = 0
+                   
+                        spot_coords <- read_rds_file@images[["slice1"]]@coordinates
+
+                        return(c(cell_type_norm,spot_coords))
+                    }
+                    
+                    ''')
+
+        get_cell_norms = robjects.globalenv['get_cell_norms']
+        cell_norm_output = get_cell_norms(self.rds_file)
+
+        # Converting R dataframes to pandas dataframes
+        with (robjects.default_converter + robjects.pandas2ri.converter).context():
+            cell_type_norms = robjects.conversion.get_conversion().rpy2py(cell_norm_output[0])
+            spot_coordinates = robjects.conversion.get_conversion().rpy2py(cell_norm_output[1])
+
+        self.omics = cell_type_norms
+        self.coordinates = spot_coordinates
 
     def process_omics(self):
 
@@ -221,84 +260,13 @@ class SpotAnnotation:
     def save(self):
 
         annot = wak.Histomics(self.spot_annotations)
-        folder = self.args.basedir
-        girder_folder_id = folder.split('/')[-2]
-        _ = os.system("printf 'Using data from girder_client Folder: {}\n'".format(folder))
-        file_name = self.args.input_files.split('/')[-1]
-        gc = girder_client.GirderClient(apiUrl=self.args.girderApiUrl)
-        gc.setToken(self.args.girderToken)
-        files = list(gc.listItem(girder_folder_id))
-        item_dict = dict()
-        for file in files:
-            d = {file['name']: file['_id']}
-            item_dict.update(d)
-        print(item_dict)
-        print(item_dict[file_name])
-        _ = gc.post(f'annotation/item/{item_dict[file_name]}', data=json.dumps(annot.json), headers={'X-HTTP-Method': 'POST','Content-Type':'application/json'})
+        _ = self.gc.post(f'annotation/item/{self.image_id}',
+                        data=json.dumps(annot.json),
+                        headers={
+                            'X-HTTP-Method': 'POST',
+                            'Content-Type':'application/json'
+                            }
+                        )
         print('uploating layers')
         print('annotation uploaded...\n')
 
-
-def main(spot_coord_file,cell_fract_file,args):
-
-    SpotAnnotation(spot_coord_file, cell_fract_file, args.definitions_file, args)
-  
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--basedir')
-    #parser.add_argument('--coordinates_file')
-    #parser.add_argument('--omics_file')
-    parser.add_argument('--rds_file')
-    parser.add_argument('--definitions_file')
-    parser.add_argument('--girderApiUrl')
-    parser.add_argument('--girderToken')
-    parser.add_argument('--input_files')
-    args = parser.parse_args()
-    # Extracting important data from Visium RDS Files and saving per-spot information
-    out_dir = args.basedir + '/tmp'
-    os.makedirs(out_dir, exist_ok=True)
-    #robjects.r(f'install.packages("Seurat",lib="{out_dir}",repos ="https://cran.r-project.org")')
-    robjects.r(f'library(Seurat)')
-    #robjects.r(f'library(Seurat,lib.loc="{out_dir}")')
-    robjects.r('library(stringr)')
-
-    robjects.r(f'reads_rds_file <- readRDS("{args.rds_file}")')
-
-    # This part has varied across versions of outputs from Ricardo
-    robjects.r(f'cell_type_fract <- GetAssayData(reads_rds_file@assays[["pred_subclass_l2"]])')
-
-    # Normalizing so that columns sum to 1
-    robjects.r('cell_type_fract <- cell_type_fract[1:nrow(cell_type_fract)-1,]')
-    robjects.r('cell_type_norm <- cell_type_fract/colSums(cell_type_fract)')
-    robjects.r('cell_type_norm[is.na(cell_type_norm)] = 0')
-
-    # Getting spot barcodes and coordinates
-    robjects.r('spot_coords <- reads_rds_file@images[["slice1"]]@coordinates')
-
-    # If a outputs folder is specified
-
-        # Getting the file name from input file path
-    image_name = args.input_files.split('/')[-1] 
-
-    #robjects.r(f'file_name <- "{image_name}"')
-        # Specifying and creating output directory within input file directory
-    robjects.r(f'output_dir <- "{out_dir}"')
-    #robjects.r('dir.create(output_dir)')
-
-        # Writing output files to default output folder
-    image_name = image_name.split('.')[0]
-    spot_coord_file =  out_dir + '/' + image_name + '_spot_coords.csv'  
-    cell_fract_file =out_dir + '/'+ image_name + '_cell_fract.csv'
-    # f1= open(spot_coord_file,'w')
-    # f1.close()
-    # f2=open(cell_fract_file,'w')
-    # f2.close() 
-    print(spot_coord_file)
-    print(cell_fract_file)
-    robjects.r(f'write.csv(cell_type_norm,file="{cell_fract_file}",sep="")')
-    robjects.r(f'write.csv(spot_coords,file="{spot_coord_file}",sep="")')
-
-    main(spot_coord_file,cell_fract_file,args=args)
-    shutil.rmtree(out_dir)
-    print("Done")
