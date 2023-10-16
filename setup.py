@@ -6,15 +6,6 @@ import sys
 
 from setuptools import find_packages
 
-# try:
-#     from skbuild import setup
-# except ImportError:
-#     sys.stderr.write("""scikit-build is required to build from source or run tox.
-# Please run:
-#   python -m pip install scikit-build
-# """)
-#     # from setuptools import setup
-#     sys.exit(1)
 from setuptools import setup
 
 
@@ -42,12 +33,12 @@ def prerelease_local_scheme(version):
 setup(
     name='spot',
     use_scm_version={'local_scheme': prerelease_local_scheme},
-    description='A Python toolkit for Histopathology Image Analysis',
+    description='Plugin for generating 10x Visium spot annotations',
     long_description=readme,
     long_description_content_type='text/x-rst',
-    author='Kitware, Inc.',
-    author_email='developers@digitalslidearchive.net',
-    url='https://github.com/DigitalSlideArchive/HistomicsTK',
+    author='Sam Border',
+    author_email='samuel.border@medicine.ufl.edu',
+    url='https://github.com/SarderLab/Spot_Annotation',
     packages=find_packages(exclude=['tests', '*_test']),
     package_dir={
         'spot': 'spot',
@@ -55,44 +46,14 @@ setup(
     include_package_data=True,
     install_requires=[
         # scientific packages
-        'nimfa>=1.3.2',
-        'numpy==1.19.5',
-        'scipy>=0.19.0',
-        'Pillow==9.5.0',
-        'pandas==1.1.5',
-        'imageio>=2.3.0',
-        'shapely[vectorized]',
-        #'opencv-python-headless<4.7',
-        #'sqlalchemy',
-        'matplotlib',
-        'pyvips',
-        'termcolor',
-        'seaborn',
-        'opencv-python',
-        #'openslide-tools'
-        #'libopenslide0',
-        'openslide-python',
-        'scikit-image==0.19.2',
-        'scikit-learn==1.0.2',
-        'lxml==4.2.2',
-        'joblib==1.1.0',
-        'tifffile==2021.11.2',
-        'tiffslide==1.3.0',
-        'tqdm==4.64.0',
-        'umap-learn==0.5.3',
-        'openpyxl',
-        'xlrd<2',
-        # dask packages
-        'dask[dataframe]>=1.1.0',
-        'distributed>=1.21.6',
-        # large image sources
-        #'large-image[sources]',
+        'numpy',
+        'pandas',
+        'tqdm',
         'girder-slicer-cli-web',
         'girder-client',
         # cli
         'ctk-cli',
-        'Shapely==1.8.5.post1',
-        'wsi-annotations-kit==1.2.11',
+        'wsi-annotations-kit==1.2.24',
         'rpy2'
     ],
     license='Apache Software License 2.0',
@@ -100,12 +61,7 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.11',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
