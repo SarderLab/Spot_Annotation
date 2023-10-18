@@ -115,8 +115,11 @@ class SpotAnnotation:
                         cell_type_norm[is.na(cell_type_norm)] = 0
                    
                         spot_coords <- read_rds_file@images[["slice1"]]@coordinates
+                   
+                        # Getting UMI counts
+                        umi_count <- data.frame(read_rds_file@meta.data[["nCount_Spatial"]],row.names=colnames(read_rds_file@assays[["Spatial"]]))
 
-                        return(c(cell_type_norm,spot_coords))
+                        return(c(cell_type_norm,spot_coords,umi_count))
                     }
                     
                     ''')
@@ -128,9 +131,11 @@ class SpotAnnotation:
         with (robjects.default_converter + robjects.pandas2ri.converter).context():
             cell_type_norms = robjects.conversion.get_conversion().rpy2py(cell_norm_output[0])
             spot_coordinates = robjects.conversion.get_conversion().rpy2py(cell_norm_output[1])
+            umi_counts = robjects.conversion.get_conversion().rpy2py(cell_norm_output[2])
 
         self.omics = cell_type_norms
         self.coordinates = spot_coordinates
+        self.umi_counts = umi_counts
 
     def process_omics(self):
 
@@ -199,6 +204,7 @@ class SpotAnnotation:
                 # Add these into pct_states and pct_subtypes?
 
         slide_compressed_counts['main_cell_types'] = slide_compressed_counts['main_cell_types'].sort_index(axis=1)
+
         return slide_compressed_counts
 
     def process_spots(self):
@@ -239,10 +245,18 @@ class SpotAnnotation:
                 spot_cell_subs_dict = spot_cell_subs.to_dict()
                 spot_cell_subtype_dict[m] = spot_cell_subs_dict[m]
 
+            # Properties written to annotations = 
+            # Main_Cell_Types = aggregated cell subtypes
+            # Cell_States = cell state distribution for each main cell type
+            # Cell_Subtypes = cell subtype distribution for each main cell type
+            # All_Subtypes = raw cell subtype distribution
+            # UMI_Count = QC metric for number of reads recorded for each spot
             spot_properties = {
                 'Main_Cell_Types': spot_main_cell_types_dict['Main_Cell_Types'],
                 'Cell_States': spot_cell_state_dict,
-                'Cell_Subtypes': spot_cell_subtype_dict
+                'Cell_Subtypes': spot_cell_subtype_dict,
+                'All_Subtypes': self.omics[b].to_dict(),
+                'UMI_Count': self.umi_count.loc[b].values
                 }
             # Adding spot to annotations, crs is just the origin since we are using non-scaled centroid points
             # name is set to be the barcode

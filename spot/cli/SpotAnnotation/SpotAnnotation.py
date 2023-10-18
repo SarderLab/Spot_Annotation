@@ -23,7 +23,7 @@ def main(args):
     gc.setToken(girderToken)
 
     # Getting image id
-    folder_items = gc.ListItem(basedir)
+    folder_items = gc.listItem(basedir)
     item_names = [i['name'] for i in folder_items]
 
     image_id = folder_items[item_names.index(image_name)]['_id']
