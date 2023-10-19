@@ -281,6 +281,6 @@ class SpotAnnotation:
                             'Content-Type':'application/json'
                             }
                         )
-        print('uploating layers')
+        print('uploading layers')
         print('annotation uploaded...\n')
 

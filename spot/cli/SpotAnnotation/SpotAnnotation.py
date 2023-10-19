@@ -23,7 +23,11 @@ def main(args):
     gc.setToken(girderToken)
 
     # Getting image id
-    folder_items = gc.listItem(basedir)
+    print(f'rds_file: {rds_file}')
+    print(f'basedir: {basedir}')
+    print(f'definitions_file: {definitions_file}')
+    print(f'input_files: {input_files}')
+    folder_items = gc.get(f'/resource/{basedir}/items?token={girderToken}',parameters={'type':'folder','limit':10000})
     item_names = [i['name'] for i in folder_items]
 
     image_id = folder_items[item_names.index(image_name)]['_id']
