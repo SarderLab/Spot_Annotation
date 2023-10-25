@@ -52,7 +52,7 @@ class SpotAnnotation:
 
         self.user_token = self.gc.get('token/session')['token']
         # Reading in csv files from paths
-        self.definitions = pd.read_csv(BytesIO(requests.get(f'{self.gc.urlBase}/item/{self.definitions_file}?token={self.user_token}').content))
+        self.definitions = pd.read_csv(BytesIO(requests.get(f'{self.gc.urlBase}/item/{self.definitions_file}/download?token={self.user_token}').content))
 
         self.process_rds()
 
@@ -117,32 +117,58 @@ class SpotAnnotation:
                         }
 
                         # Normalizing so that the columns sum to 1
+                        print('Generating normalized cell type fractions')
                         cell_type_fract <- cell_type_fract[1:nrow(cell_type_fract)-1,]
                         cell_type_norm <- sweep(cell_type_fract,2,colSums(cell_type_fract),'/')
                         cell_type_norm[is.na(cell_type_norm)] = 0
-                   
-                        spot_coords <- read_rds_file@images[["slice1"]]@coordinates
-                   
-                        # Getting UMI counts
-                        umi_count <- data.frame(read_rds_file@meta.data[["nCount_Spatial"]],row.names=colnames(read_rds_file@assays[["Spatial"]]))
 
-                        return(c(cell_type_norm,spot_coords,umi_count))
+                        return(as.data.frame(cell_type_norm))
                     }
                     
                     ''')
 
+        robjects.r('''
+                   # Function to get spot coordinates
+                   get_spot_coords <- function(rds_file){
+                        print('Getting spot coordinates')
+
+                        read_rds_file <- readRDS(url(rds_file))
+                        spot_coords <- read_rds_file@images[["slice1"]]@coordinates
+                   
+                        return(as.data.frame(spot_coords))
+                   }
+                   ''')
+        
+        robjects.r('''
+                   # Function to get UMI Counts
+                   get_umi_counts <- function(rds_file){
+                        print('Getting UMI counts')
+                   
+                        read_rds_file <- readRDS(url(rds_file))
+                        umi_count <- data.frame(read_rds_file@meta.data[["nCount_Spatial"]],row.names=rownames(read_rds_file@images[["slice1"]]@coordinates))
+                        colnames(umi_count)<- 'UMI Counts'
+                   
+                        return(umi_count)
+                   }
+                   
+                   ''')
+
         get_cell_norms = robjects.globalenv['get_cell_norms']
+        get_spot_coords = robjects.globalenv['get_spot_coords']
+        get_umi_counts = robjects.globalenv['get_umi_counts']
 
         rds_file_address = f'{self.gc.urlBase.replace("//","/").replace("http:","http:/")}item/{self.rds_file}/download?token={self.user_token}'
 
         print(f'rds_file_address: {rds_file_address}')
         cell_norm_output = get_cell_norms(rds_file_address)
+        spot_coords_output = get_spot_coords(rds_file_address)
+        umi_counts_output = get_umi_counts(rds_file_address)
 
         # Converting R dataframes to pandas dataframes
         with (robjects.default_converter + pandas2ri.converter).context():
-            cell_type_norms = robjects.conversion.get_conversion().rpy2py(cell_norm_output[0])
-            spot_coordinates = robjects.conversion.get_conversion().rpy2py(cell_norm_output[1])
-            umi_counts = robjects.conversion.get_conversion().rpy2py(cell_norm_output[2])
+            cell_type_norms = robjects.conversion.get_conversion().rpy2py(cell_norm_output)
+            spot_coordinates = robjects.conversion.get_conversion().rpy2py(spot_coords_output)
+            umi_counts = robjects.conversion.get_conversion().rpy2py(umi_counts_output)
 
         self.omics = cell_type_norms
         self.coordinates = spot_coordinates
@@ -267,7 +293,7 @@ class SpotAnnotation:
                 'Cell_States': spot_cell_state_dict,
                 'Cell_Subtypes': spot_cell_subtype_dict,
                 'All_Subtypes': self.omics[b].to_dict(),
-                'UMI_Count': self.umi_count.loc[b].values
+                'UMI_Count': self.umi_counts.loc[b].values.tolist()[0]
                 }
             # Adding spot to annotations, crs is just the origin since we are using non-scaled centroid points
             # name is set to be the barcode
