@@ -28,9 +28,13 @@ from shapely.geometry import Polygon, Point
 #from geojson import Feature, dump
 from wsi_annotations_kit import wsi_annotations_kit as wak
 import rpy2.robjects as robjects
+from rpy2.robjects import pandas2ri
 from tqdm import tqdm
 import os
 import shutil
+
+from io import BytesIO
+import requests
 
 
 class SpotAnnotation:
@@ -46,8 +50,9 @@ class SpotAnnotation:
         self.image_id = image_id
         self.gc = gc
 
+        self.user_token = self.gc.get('token/session')['token']
         # Reading in csv files from paths
-        self.definitions = pd.read_csv(self.definitions_file)
+        self.definitions = pd.read_csv(BytesIO(requests.get(f'{self.gc.urlBase}/item/{self.definitions_file}?token={self.user_token}').content))
 
         self.process_rds()
 
@@ -101,7 +106,9 @@ class SpotAnnotation:
         robjects.r('''
                     # Function to extract normalized cell type fractions from RDS file
                     get_cell_norms <- function(rds_file){
-                        read_rds_file <- readRDS(rds_file)
+                        print(rds_file)
+
+                        read_rds_file <- readRDS(url(rds_file))
 
                         if ("predsubclassl2" %in% names(read_rds_file@assays)){
                             cell_type_fract <- GetAssayData(read_rds_file@assays[["predsubclassl2"]])
@@ -125,10 +132,14 @@ class SpotAnnotation:
                     ''')
 
         get_cell_norms = robjects.globalenv['get_cell_norms']
-        cell_norm_output = get_cell_norms(self.rds_file)
+
+        rds_file_address = f'{self.gc.urlBase.replace("//","/").replace("http:","http:/")}item/{self.rds_file}/download?token={self.user_token}'
+
+        print(f'rds_file_address: {rds_file_address}')
+        cell_norm_output = get_cell_norms(rds_file_address)
 
         # Converting R dataframes to pandas dataframes
-        with (robjects.default_converter + robjects.pandas2ri.converter).context():
+        with (robjects.default_converter + pandas2ri.converter).context():
             cell_type_norms = robjects.conversion.get_conversion().rpy2py(cell_norm_output[0])
             spot_coordinates = robjects.conversion.get_conversion().rpy2py(cell_norm_output[1])
             umi_counts = robjects.conversion.get_conversion().rpy2py(cell_norm_output[2])

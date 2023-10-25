@@ -27,12 +27,11 @@ RUN apt-get update && \
     unzip \
     libhdf5-dev \
     libpython3-dev \
-    python2.7-dev \
-    python-tk \
-    python3.11-dev \
-    python3.11-distutils \
+    python3.8-dev \
+    python3.8-distutils \
     software-properties-common \
     libssl-dev \
+    libffi-dev \
     # Standard build tools \
     build-essential \
     cmake \
@@ -55,12 +54,12 @@ WORKDIR /
 #Make a specific version of python the default and install pip
 RUN rm -f /usr/bin/python && \
     rm -f /usr/bin/python3 && \
-    ln `which python3.11` /usr/bin/python && \
-    ln `which python3.11` /usr/bin/python3 && \
+    ln `which python3.8` /usr/bin/python && \
+    ln `which python3.8` /usr/bin/python3 && \
     curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
     python get-pip.py && \
-    rm get-pip.py && \
-    ln `which pip3` /usr/bin/pip 
+    rm get-pip.py
+    #ln `which pip3` /usr/bin/pip 
 
 RUN which  python && \
     python --version
