@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>HistomicsTK</category>
+  <title>Spot Annotation</title>
+  <description>Generate Visium spot annotations from spot centroid coordinates and cell composition (omics) files.</description>
+  <version>0.1.0</version>
+  <documentation-url>https://digitalslidearchive.github.io/HistomicsTK/</documentation-url>
+  <license>Apache 2.0</license>
+  <contributor>Samuel Border</contributor>
+  <acknowledgements>This work is part of efforts in digital pathology by the Sarder Lab: UFL.</acknowledgements>
+  <parameters>
+    <label>IO</label>
+    <description>Input/output parameters.</description>
+    <string>
+      <name>rds_file</name>
+      <label>RDS file</label>
+      <description>RDS file</description>
+      <channel>input</channel>
+      <index>0</index>
+    </string>
+    <string>
+      <name>definitions_file</name>
+      <label>Definintions file</label>
+      <description> Definitons file</description>
+      <channel>input</channel>
+      <index>1</index>
+    </string>
+    <string>
+      <name>input_files</name>
+      <label>Input Image</label>
+      <description>input filename </description>
+      <channel>input</channel>
+      <index>2</index>
+    </string>
+    <string>
+      <name>basedir</name>
+      <label>Base Directory</label>
+      <description>Base Directory for the image</description>
+      <channel>input</channel>
+      <index>3</index>
+    </string>
+  </parameters>
+  <parameters advanced="true">
+    <label>Girder API URL and Key</label>
+    <description>A Girder API URL and token for Girder client</description>
+    <string>
+      <name>girderApiUrl</name>
+      <longflag>api-url</longflag>
+      <label>Girder API URL</label>
+      <description>A Girder API URL (e.g., https://girder.example.com:443/api/v1)</description>
+      <default></default>
+    </string>
+    <string>
+      <name>girderToken</name>
+      <longflag>token</longflag>
+      <label>Girder API Token</label>
+      <description>A Girder token</description>
+      <default></default>
+    </string>
+  </parameters>
+</executable>
