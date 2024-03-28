@@ -72,8 +72,10 @@ class SpotAnnotation:
         print(f'Counts file is: {file_extension}')
         if file_extension.lower()=='rds':
             self.process_rds()
+            self.counts_file_type = 'rds'
         elif file_extension.lower()=='h5ad':
             self.process_h5ad()
+            self.counts_file_type = 'h5ad'
 
         # Determining MPP from coordinates
         self.mpp = self.calculate_mpp()
@@ -330,39 +332,47 @@ class SpotAnnotation:
             
             # Creating shapely annotation for this spot
             spot_poly = Point(b_x, b_y).buffer(spot_pixel_radius)
+            
+            if self.counts_file_type == 'rds':
+                # Extracting -omics information from previous processing step
+                spot_main_cell_types = self.omics_data['main_cell_types'].loc[b].to_frame()
+                spot_main_cell_types.columns = ['Main_Cell_Types']
+                spot_main_cell_types_dict = spot_main_cell_types.to_dict()
 
-            # Extracting -omics information from previous processing step
-            spot_main_cell_types = self.omics_data['main_cell_types'].loc[b].to_frame()
-            spot_main_cell_types.columns = ['Main_Cell_Types']
-            spot_main_cell_types_dict = spot_main_cell_types.to_dict()
+                # Cell State info
+                spot_cell_state_dict = {}
+                spot_cell_subtype_dict = {}
+                for m in list(spot_main_cell_types_dict['Main_Cell_Types'].keys()):
 
-            # Cell State info
-            spot_cell_state_dict = {}
-            spot_cell_subtype_dict = {}
-            for m in list(spot_main_cell_types_dict['Main_Cell_Types'].keys()):
+                    spot_cell_state = self.omics_data[m]['pct_states'][b].to_frame()
+                    spot_cell_state.columns = [m]
+                    spot_cell_state_dict[m] = spot_cell_state.to_dict()[m]
 
-                spot_cell_state = self.omics_data[m]['pct_states'][b].to_frame()
-                spot_cell_state.columns = [m]
-                spot_cell_state_dict[m] = spot_cell_state.to_dict()[m]
+                    spot_cell_subs = self.omics_data[m]['pct_subtypes'][b].to_frame()
+                    spot_cell_subs.columns = [m]
+                    spot_cell_subs_dict = spot_cell_subs.to_dict()
+                    spot_cell_subtype_dict[m] = spot_cell_subs_dict[m]
 
-                spot_cell_subs = self.omics_data[m]['pct_subtypes'][b].to_frame()
-                spot_cell_subs.columns = [m]
-                spot_cell_subs_dict = spot_cell_subs.to_dict()
-                spot_cell_subtype_dict[m] = spot_cell_subs_dict[m]
-
-            # Properties written to annotations = 
-            # Main_Cell_Types = aggregated cell subtypes
-            # Cell_States = cell state distribution for each main cell type
-            # Cell_Subtypes = cell subtype distribution for each main cell type
-            # All_Subtypes = raw cell subtype distribution
-            # UMI_Count = QC metric for number of reads recorded for each spot
-            spot_properties = {
-                'Main_Cell_Types': spot_main_cell_types_dict['Main_Cell_Types'],
-                'Cell_States': spot_cell_state_dict,
-                'Cell_Subtypes': spot_cell_subtype_dict,
-                'All_Subtypes': self.omics[b].to_dict(),
-                'UMI_Count': self.umi_counts.loc[b].values.tolist()[0]
+                # Properties written to annotations = 
+                # Main_Cell_Types = aggregated cell subtypes
+                # Cell_States = cell state distribution for each main cell type
+                # Cell_Subtypes = cell subtype distribution for each main cell type
+                # All_Subtypes = raw cell subtype distribution
+                # UMI_Count = QC metric for number of reads recorded for each spot
+                spot_properties = {
+                    'Main_Cell_Types': spot_main_cell_types_dict['Main_Cell_Types'],
+                    'Cell_States': spot_cell_state_dict,
+                    'Cell_Subtypes': spot_cell_subtype_dict,
+                    'All_Subtypes': self.omics[b].to_dict(),
+                    'UMI_Count': self.umi_counts.loc[b].values.tolist()[0]
+                    }
+                
+            elif self.counts_file_type=='h5ad':
+                
+                spot_properties = {
+                    'Gene Counts': self.omics.loc[b].to_dict()
                 }
+
             # Adding spot to annotations, crs is just the origin since we are using non-scaled centroid points
             # name is set to be the barcode
             spot_annotations.add_shape(
