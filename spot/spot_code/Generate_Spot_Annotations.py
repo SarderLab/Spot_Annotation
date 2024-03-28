@@ -33,28 +33,47 @@ from tqdm import tqdm
 import os
 import shutil
 
+import anndata as ad
+
 from io import BytesIO
 import requests
 
 
 class SpotAnnotation:
     def __init__(self,
-                 rds_file,
+                 counts_file_id,
                  definitions_file: str,
                  image_id,
-                 gc):
+                 gc,
+                 gene_selection_method = None
+                 ):
         
-        self.rds_file = rds_file
+        self.counts_file_id = counts_file_id
         self.definitions_file = definitions_file
+        self.gene_method = gene_selection_method
 
         self.image_id = image_id
         self.gc = gc
 
         self.user_token = self.gc.get('token/session')['token']
         # Reading in csv files from paths
-        self.definitions = pd.read_csv(BytesIO(requests.get(f'{self.gc.urlBase}/item/{self.definitions_file}/download?token={self.user_token}').content))
+        self.definitions = pd.read_csv(
+            BytesIO(
+                requests.get(
+                    f'{self.gc.urlBase}/item/{self.definitions_file}/download?token={self.user_token}'
+                    ).content
+                )
+            )
 
-        self.process_rds()
+        # Getting the format of the counts file
+        counts_item_info = self.gc.get(f'/item/{self.counts_file_id}')
+        counts_file_name = counts_item_info['name']
+        file_extension = counts_file_name.split('.')[-1]
+        print(f'Counts file is: {file_extension}')
+        if file_extension.lower()=='rds':
+            self.process_rds()
+        elif file_extension.lower()=='h5ad':
+            self.process_h5ad()
 
         # Determining MPP from coordinates
         self.mpp = self.calculate_mpp()
@@ -76,26 +95,75 @@ class SpotAnnotation:
 
         # Test spot is the first one
         test_spot = [spot_x_coords[0],spot_y_coords[0]]
-        #print(f'test_spot: {test_spot}')
 
         # Spot distances
         spot_dists = np.array([self.distance(test_spot, [x, y]) for x, y in zip(spot_x_coords, spot_y_coords)])
-        #print(f'Number of spot dists: {np.shape(spot_dists)}')
         spot_dists = np.unique(spot_dists[spot_dists > 0])
-        #print(spot_dists)
-        #print(f'Number of unique spot_dists: {np.shape(spot_dists)}')
         min_spot_dist = np.min(spot_dists)
-        #print(f'Minimum spot distance: {min_spot_dist}')
 
         # Minimum distance between the test spot and another spot = 100um (same as doing 100/min_spot_dist)
         mpp = 1/(min_spot_dist/100)
-        #print(f'calculated mpp = {mpp}')
 
         return mpp
 
     def distance(self, point1, point2):
         # Distance between 2 points
         return (((point1[0]-point2[0])**2)+((point1[1]-point2[1])**2))**0.5
+
+    def process_h5ad(self):
+
+        # Reading h5ad object (HuBMAP processed):
+        self.gc.downloadItem(
+            itemId = self.counts_file_id,
+            dest = '/counts_file.h5ad'
+        )
+        ann_data_object = ad.read_h5ad(
+            '/counts_file.h5ad'
+        )
+
+        # Coordinates stored in obsm['spatial'] 
+        self.coordinates = pd.DataFrame(
+            data = ann_data_object.obsm['spatial'],
+            index = ann_data_object.obs_names,
+            columns = ['imagecol','imagerow']
+        )
+
+        # Getting the counts dataframe based on gene_selection_method
+        if self.gene_selection_method['method'] == 'highest_mean':
+
+            mean_vals = ann_data_object.var['mean'].sort_values(ascending=False)
+            highest_n_mean_genes = list(mean_vals.iloc[0:self.gene_selection_method['n']].index)
+
+            subset_ann_data = ann_data_object[:,highest_n_mean_genes]
+
+        elif self.gene_selection_method['method'] == 'highly_variable':
+
+            # Checking the "flavor"
+            # See: https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.highly_variable_genes.html
+            flav = ann_data_object.uns['hvg']['flavor']
+            if flav=='seurat':
+                # Default value, uses dispersion (normalized)
+                # See: https://satijalab.org/seurat/reference/findvariablefeatures (mean.var.plot)
+                dispersions = ann_data_object.var['dispersions_norm'].sort_values(ascending=False)
+                highest_dispersed_genes = list(dispersions.iloc[0:self.gene_selection_method['n']].index)
+
+                subset_ann_data = ann_data_object[:, highest_dispersed_genes]
+
+            elif flav=='seurat_v3' or flav=='seurat_v3_paper':
+                # Same link as above but using "vst"
+                hv_rank = ann_data_object.var['highly_variable_rank'].sort_values(ascending=False)
+                highest_hv_rank = list(hv_rank.iloc[0:self.gene_selection_method['n']].index)
+
+                subset_ann_data = ann_data_object[:, highest_hv_rank]
+
+            else:
+                print(f'Flavor: {flav} not supported')
+
+            self.omics = pd.DataFrame(
+                data = subset_ann_data.X,
+                index = subset_ann_data.obs_names,
+                columns = subset_ann_data.var_names
+            )
 
     def process_rds(self):
 
@@ -253,7 +321,7 @@ class SpotAnnotation:
         # Iterating through barcodes and creating equal sized spots centered on coordinates
         spot_pixel_diameter = int((1/self.mpp)*55)
         spot_pixel_radius = int(spot_pixel_diameter/2)
-        for b in tqdm(self.barcodes):
+        for b in tqdm(self.barcodes,total = len(self.barcodes)):
 
             # Pulling out that row from coordinates
             b_coords = self.coordinates.loc[b]
@@ -318,6 +386,4 @@ class SpotAnnotation:
                             'Content-Type':'application/json'
                             }
                         )
-        print('uploading layers')
-        print('annotation uploaded...\n')
-
+        print('Done! Posting annotations')
