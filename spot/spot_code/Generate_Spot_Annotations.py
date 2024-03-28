@@ -45,25 +45,28 @@ class SpotAnnotation:
                  definitions_file: str,
                  image_id,
                  gc,
+                 organ,
                  gene_selection_method = None
                  ):
         
         self.counts_file_id = counts_file_id
         self.definitions_file = definitions_file
         self.gene_method = gene_selection_method
+        self.organ = organ
 
         self.image_id = image_id
         self.gc = gc
 
         self.user_token = self.gc.get('token/session')['token']
         # Reading in csv files from paths
-        self.definitions = pd.read_csv(
-            BytesIO(
-                requests.get(
-                    f'{self.gc.urlBase}/item/{self.definitions_file}/download?token={self.user_token}'
-                    ).content
+        if organ=='kidney':
+            self.definitions = pd.read_csv(
+                BytesIO(
+                    requests.get(
+                        f'{self.gc.urlBase}/item/{self.definitions_file}/download?token={self.user_token}'
+                        ).content
+                    )
                 )
-            )
 
         # Getting the format of the counts file
         counts_item_info = self.gc.get(f'/item/{self.counts_file_id}')
@@ -82,8 +85,10 @@ class SpotAnnotation:
 
         self.barcodes = list(self.coordinates.index)
         print(f'number of barcodes: {len(self.barcodes)}')
+        
+        if self.counts_file_type=='rds' and self.organ == 'kidney':
+            self.omics_data = self.process_omics()
 
-        self.omics_data = self.process_omics()
         self.spot_annotations = self.process_spots()
 
         self.save()
@@ -132,11 +137,15 @@ class SpotAnnotation:
 
         # Getting the counts dataframe based on gene_selection_method
         if self.gene_selection_method['method'] == 'highest_mean':
-
+            # Getting the genes with the highest mean value
             mean_vals = ann_data_object.var['mean'].sort_values(ascending=False)
             highest_n_mean_genes = list(mean_vals.iloc[0:self.gene_selection_method['n']].index)
 
             subset_ann_data = ann_data_object[:,highest_n_mean_genes]
+
+        elif self.gene_selection_method['method'] == 'specific_list':
+            # Passing a list of specific genes to include
+            subset_ann_data = ann_data_object[:,self.gene_selection_method['list']]
 
         elif self.gene_selection_method['method'] == 'highly_variable':
 

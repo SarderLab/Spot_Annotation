@@ -12,9 +12,9 @@
     <label>IO</label>
     <description>Input/output parameters.</description>
     <string>
-      <name>rds_file</name>
-      <label>RDS file</label>
-      <description>RDS file</description>
+      <name>counts_file</name>
+      <label>Counts file</label>
+      <description>Counts file. rds or h5ad types supported. String is item id.</description>
       <channel>input</channel>
       <index>0</index>
     </string>
@@ -33,12 +33,12 @@
       <index>2</index>
     </string>
     <string>
-      <name>basedir</name>
-      <label>Base Directory</label>
-      <description>Base Directory for the image</description>
+      <name>organ</name>
+      <label>Organ</label>
+      <description>Name of organ</description>
       <channel>input</channel>
       <index>3</index>
-    </string>
+    <string>
   </parameters>
   <parameters advanced="true">
     <label>Girder API URL and Key</label>
@@ -57,5 +57,28 @@
       <description>A Girder token</description>
       <default></default>
     </string>
+    <string>
+      <name>gene_selection_method</name>
+      <longflag>gene_selection_method</longflag>
+      <label>Gene Selection Method</label>
+      <description>If processing with genes, pass the method of gene selection here.</description>
+      <default>highest_mean</default>
+      <element>highest_mean</element>
+      <element>highly_variable</element>
+      <element>specific_list</element>
+    </string>
+    <string>
+      <name>gene_list</name>
+      <longflag>gene_list</longflag>
+      <description>If you want to pass a comma separated list of gene ids, do so here.</description>
+      <default></default>
+    <string>
+    <integer>
+      <name>n</name>
+      <longflag>n</longflag>
+      <label>Number of genes</label>
+      <description>If processing with genes, pass the number of genes to include here.</description>
+      <default>25</default>
+    </integer>
   </parameters>
 </executable>

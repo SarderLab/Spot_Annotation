@@ -10,25 +10,29 @@ from spot_code.Generate_Spot_Annotations import SpotAnnotation
 def main(args):  
 
     # Defining main inputs into SpotAnnotation from arguments
-    basedir = args.basedir
-    rds_file = args.rds_file
+
+    counts_file = args.counts_file
+    organ = args.organ
     definitions_file = args.definitions_file
     girderApiUrl = args.girderApiUrl
     girderToken = args.girderToken
     input_files = args.input_files
+    gene_selection_method = {
+        'method': args.gene_selection_method,
+        'n': args.n,
+        'list': args.list
+    }
 
     # simple processing of input arguments
-    image_name = input_files.split(os.sep)[-1]
     gc = girder_client.GirderClient(apiUrl=girderApiUrl)
     gc.setToken(girderToken)
 
     # Getting image id
-    print(f'rds_file: {rds_file}')
-    print(f'basedir: {basedir}')
+    print(f'rds_file: {counts_file}')
     print(f'definitions_file: {definitions_file}')
     print(f'input_files: {input_files}')
     # instantiating SpotAnnotation object, automatically outputs annotations to image_name
-    SpotAnnotation(rds_file,definitions_file,input_files,gc)
+    SpotAnnotation(counts_file,definitions_file,input_files,gc,gene_selection_method)
 
 
 if __name__ == "__main__":
