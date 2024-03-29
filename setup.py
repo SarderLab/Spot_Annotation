@@ -54,7 +54,8 @@ setup(
         # cli
         'ctk-cli',
         'wsi-annotations-kit==1.2.24',
-        'rpy2'
+        'rpy2',
+        'anndata'
     ],
     license='Apache Software License 2.0',
     keywords='spot',

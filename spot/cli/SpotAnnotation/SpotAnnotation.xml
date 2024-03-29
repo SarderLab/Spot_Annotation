@@ -38,7 +38,7 @@
       <description>Name of organ</description>
       <channel>input</channel>
       <index>3</index>
-    <string>
+    </string>
   </parameters>
   <parameters advanced="true">
     <label>Girder API URL and Key</label>
@@ -72,7 +72,7 @@
       <longflag>gene_list</longflag>
       <description>If you want to pass a comma separated list of gene ids, do so here.</description>
       <default></default>
-    <string>
+    </string>
     <integer>
       <name>n</name>
       <longflag>n</longflag>
