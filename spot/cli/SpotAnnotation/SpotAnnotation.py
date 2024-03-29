@@ -20,7 +20,7 @@ def main(args):
     gene_selection_method = {
         'method': args.gene_selection_method,
         'n': args.n,
-        'list': args.list
+        'list': args.gene_list
     }
 
     # simple processing of input arguments
@@ -32,7 +32,14 @@ def main(args):
     print(f'definitions_file: {definitions_file}')
     print(f'input_files: {input_files}')
     # instantiating SpotAnnotation object, automatically outputs annotations to image_name
-    SpotAnnotation(counts_file,definitions_file,input_files,gc,gene_selection_method)
+    SpotAnnotation(
+        counts_file,
+        definitions_file,
+        input_files,
+        organ,
+        gc,
+        gene_selection_method
+    )
 
 
 if __name__ == "__main__":

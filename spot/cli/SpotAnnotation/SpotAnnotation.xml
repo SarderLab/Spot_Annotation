@@ -63,12 +63,10 @@
       <label>Gene Selection Method</label>
       <description>If processing with genes, pass the method of gene selection here.</description>
       <default>highest_mean</default>
-      <element>highest_mean</element>
-      <element>highly_variable</element>
-      <element>specific_list</element>
     </string>
     <string>
       <name>gene_list</name>
+      <label>Gene List</label>
       <longflag>gene_list</longflag>
       <description>If you want to pass a comma separated list of gene ids, do so here.</description>
       <default></default>
