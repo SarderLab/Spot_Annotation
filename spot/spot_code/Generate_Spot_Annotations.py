@@ -77,7 +77,7 @@ class SpotAnnotation:
             self.process_rds()
             self.counts_file_type = 'rds'
         elif file_extension.lower()=='h5ad':
-            self.process_h5ad()
+            self.process_h5ad(counts_file_name)
             self.counts_file_type = 'h5ad'
 
         # Determining MPP from coordinates
@@ -117,15 +117,15 @@ class SpotAnnotation:
         # Distance between 2 points
         return (((point1[0]-point2[0])**2)+((point1[1]-point2[1])**2))**0.5
 
-    def process_h5ad(self):
+    def process_h5ad(self,filename):
 
         # Reading h5ad object (HuBMAP processed):
         self.gc.downloadItem(
             itemId = self.counts_file_id,
-            dest = '/counts_file.h5ad'
+            dest = '/'
         )
         ann_data_object = ad.read_h5ad(
-            '/counts_file.h5ad'
+            '/'+filename
         )
 
         # Coordinates stored in obsm['spatial'] 
@@ -135,19 +135,19 @@ class SpotAnnotation:
             columns = ['imagecol','imagerow']
         )
 
-        # Getting the counts dataframe based on gene_selection_method
-        if self.gene_selection_method['method'] == 'highest_mean':
+        # Getting the counts dataframe based on gene_method
+        if self.gene_method['method'] == 'highest_mean':
             # Getting the genes with the highest mean value
             mean_vals = ann_data_object.var['mean'].sort_values(ascending=False)
-            highest_n_mean_genes = list(mean_vals.iloc[0:self.gene_selection_method['n']].index)
+            highest_n_mean_genes = list(mean_vals.iloc[0:self.gene_method['n']].index)
 
             subset_ann_data = ann_data_object[:,highest_n_mean_genes]
 
-        elif self.gene_selection_method['method'] == 'specific_list':
+        elif self.gene_method['method'] == 'specific_list':
             # Passing a list of specific genes to include
-            subset_ann_data = ann_data_object[:,self.gene_selection_method['list']]
+            subset_ann_data = ann_data_object[:,self.gene_method['list']]
 
-        elif self.gene_selection_method['method'] == 'highly_variable':
+        elif self.gene_method['method'] == 'highly_variable':
 
             # Checking the "flavor"
             # See: https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.highly_variable_genes.html
@@ -156,25 +156,26 @@ class SpotAnnotation:
                 # Default value, uses dispersion (normalized)
                 # See: https://satijalab.org/seurat/reference/findvariablefeatures (mean.var.plot)
                 dispersions = ann_data_object.var['dispersions_norm'].sort_values(ascending=False)
-                highest_dispersed_genes = list(dispersions.iloc[0:self.gene_selection_method['n']].index)
+                highest_dispersed_genes = list(dispersions.iloc[0:self.gene_method['n']].index)
 
                 subset_ann_data = ann_data_object[:, highest_dispersed_genes]
 
             elif flav=='seurat_v3' or flav=='seurat_v3_paper':
                 # Same link as above but using "vst"
                 hv_rank = ann_data_object.var['highly_variable_rank'].sort_values(ascending=False)
-                highest_hv_rank = list(hv_rank.iloc[0:self.gene_selection_method['n']].index)
+                highest_hv_rank = list(hv_rank.iloc[0:self.gene_method['n']].index)
 
                 subset_ann_data = ann_data_object[:, highest_hv_rank]
 
             else:
+                # FLAVA FLAV
                 print(f'Flavor: {flav} not supported')
 
-            self.omics = pd.DataFrame(
-                data = subset_ann_data.X,
-                index = subset_ann_data.obs_names,
-                columns = subset_ann_data.var_names
-            )
+        self.omics = pd.DataFrame(
+            data = subset_ann_data.X,
+            index = subset_ann_data.obs_names,
+            columns = subset_ann_data.var_names
+        )
 
     def process_rds(self):
 

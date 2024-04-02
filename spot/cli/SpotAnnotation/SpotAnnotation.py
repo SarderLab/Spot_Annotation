@@ -28,16 +28,17 @@ def main(args):
     gc.setToken(girderToken)
 
     # Getting image id
-    print(f'rds_file: {counts_file}')
-    print(f'definitions_file: {definitions_file}')
-    print(f'input_files: {input_files}')
+    for a in vars(args):
+        print(f'{a}: {getattr(args,a)}')
+
+        
     # instantiating SpotAnnotation object, automatically outputs annotations to image_name
     SpotAnnotation(
         counts_file,
         definitions_file,
         input_files,
-        organ,
         gc,
+        organ,
         gene_selection_method
     )
 
