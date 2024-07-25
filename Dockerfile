@@ -89,6 +89,7 @@ RUN python --version && pip --version && pip freeze
 
 # define entrypoint through which all CLIs can be run
 WORKDIR $spot_path/spot/cli
+LABEL entry_path = $spot_path/spot/cli
 
 # Test our entrypoint.  If we have incompatible versions of numpy and
 # openslide, one of these will fail
