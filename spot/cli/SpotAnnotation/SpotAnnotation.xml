@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>HistomicsTK</category>
+  <title>Spot Annotation</title>
+  <description>Generate Visium spot annotations from spot centroid coordinates and cell composition (omics) files.</description>
+  <version>0.1.0</version>
+  <documentation-url>https://digitalslidearchive.github.io/HistomicsTK/</documentation-url>
+  <license>Apache 2.0</license>
+  <contributor>Samuel Border</contributor>
+  <acknowledgements>This work is part of efforts in digital pathology by the Sarder Lab: UFL.</acknowledgements>
+  <parameters>
+    <label>IO</label>
+    <description>Input/output parameters.</description>
+    <string>
+      <name>counts_file</name>
+      <label>Counts file</label>
+      <description>Counts file. rds or h5ad types supported. String is item id.</description>
+      <channel>input</channel>
+      <index>0</index>
+    </string>
+    <string>
+      <name>definitions_file</name>
+      <label>Definintions file</label>
+      <description> Definitons file</description>
+      <channel>input</channel>
+      <index>1</index>
+    </string>
+    <string>
+      <name>input_files</name>
+      <label>Input Image</label>
+      <description>input filename </description>
+      <channel>input</channel>
+      <index>2</index>
+    </string>
+    <string>
+      <name>organ</name>
+      <label>Organ</label>
+      <description>Name of organ</description>
+      <channel>input</channel>
+      <index>3</index>
+    </string>
+  </parameters>
+  <parameters advanced="true">
+    <label>Girder API URL and Key</label>
+    <description>A Girder API URL and token for Girder client</description>
+    <string>
+      <name>girderApiUrl</name>
+      <longflag>api-url</longflag>
+      <label>Girder API URL</label>
+      <description>A Girder API URL (e.g., https://girder.example.com:443/api/v1)</description>
+      <default></default>
+    </string>
+    <string>
+      <name>girderToken</name>
+      <longflag>token</longflag>
+      <label>Girder API Token</label>
+      <description>A Girder token</description>
+      <default></default>
+    </string>
+    <string>
+      <name>gene_selection_method</name>
+      <longflag>gene_selection_method</longflag>
+      <label>Gene Selection Method</label>
+      <description>If processing with genes, pass the method of gene selection here.</description>
+      <default>highest_mean</default>
+    </string>
+    <string>
+      <name>gene_list</name>
+      <label>Gene List</label>
+      <longflag>gene_list</longflag>
+      <description>If you want to pass a comma separated list of gene ids, do so here.</description>
+      <default></default>
+    </string>
+    <integer>
+      <name>n</name>
+      <longflag>n</longflag>
+      <label>Number of genes</label>
+      <description>If processing with genes, pass the number of genes to include here.</description>
+      <default>25</default>
+    </integer>
+  </parameters>
+</executable>
